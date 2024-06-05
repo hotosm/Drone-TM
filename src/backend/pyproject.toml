@@ -26,6 +26,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "fmtm-splitter>=1.2.1",
     "minio>=7.2.7",
+    "asyncpg>=0.29.0",
 ]
 requires-python = ">=3.10"
 license = {text = "GPL-3.0-only"}
