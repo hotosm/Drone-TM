@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: Optional[str] = "dtm"
     POSTGRES_PASSWORD: Optional[str] = "dtm"
     POSTGRES_DB: Optional[str] = "dtm"
+    POSTGRES_ECHO: bool = False
 
     DTM_DB_URL: Optional[PostgresDsn] = None
 
@@ -62,7 +63,8 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v
         pg_url = PostgresDsn.build(
-            scheme="postgresql",
+            scheme="postgresql+asyncpg",
+            # scheme="postgresql",
             username=info.data.get("POSTGRES_USER"),
             password=info.data.get("POSTGRES_PASSWORD"),
             host=info.data.get("POSTGRES_HOST"),
