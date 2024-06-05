@@ -9,18 +9,19 @@ from fastapi import HTTPException
 from app.utils import merge_multipolygon
 from fmtm_splitter.splitter import split_by_square
 from fastapi.concurrency import run_in_threadpool
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def create_project_with_project_info(
-    db: Session, project_metadata: project_schemas.ProjectIn
+    db: AsyncSession, project_metadata: project_schemas.ProjectIn
 ):
     """Create a project in database."""
     db_project = db_models.DbProject(
         author_id=1, **project_metadata.model_dump(exclude=["outline_geojson"])
     )
     db.add(db_project)
-    db.commit()
-    db.refresh(db_project)
+    await db.commit()
+    await db.refresh(db_project)
     return db_project
 
 

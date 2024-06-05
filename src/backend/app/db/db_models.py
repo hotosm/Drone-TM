@@ -11,6 +11,7 @@ from sqlalchemy import (
     SmallInteger,
     Enum,
     Index,
+    TIMESTAMP,
     desc,
 )
 
@@ -140,8 +141,12 @@ class DbProject(Base):
     description = cast(str, Column(String))
     per_task_instructions = cast(str, Column(String))
     location_str = cast(str, Column(String))
-    created = cast(datetime, Column(DateTime, default=timestamp, nullable=False))
-    last_updated = cast(datetime, Column(DateTime, default=timestamp))
+    # created = cast(datetime, Column(DateTime, default=timestamp, nullable=False))
+    # last_updated = cast(datetime, Column(DateTime, default=timestamp))
+    created = Column(TIMESTAMP(timezone=True), default=timestamp, nullable=False)
+    last_updated = Column(
+        TIMESTAMP(timezone=True), default=timestamp, onupdate=timestamp
+    )
 
     # GEOMETRY
     outline = cast(WKBElement, Column(Geometry("POLYGON", srid=4326)))

@@ -13,6 +13,7 @@ from app.models.enums import HTTPStatus
 from app.utils import multipolygon_to_polygon
 from app.s3 import s3_client
 from app.config import settings
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter(
@@ -26,7 +27,7 @@ router = APIRouter(
 )
 async def create_project(
     project_info: project_schemas.ProjectIn,
-    db: Session = Depends(database.get_db),
+    db: AsyncSession = Depends(database.get_db),
 ):
     """Create a project in  database."""
 
