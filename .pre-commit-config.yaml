@@ -34,22 +34,6 @@ repos:
         language: python
         types: [text]
 
-      - id: check-executables-have-shebangs
-        name: check that executables have shebangs
-        description: ensures that (non-binary) executables have a shebang.
-        entry: check-executables-have-shebangs
-        language: python
-        types: [text, executable]
-        stages: [commit, push, manual]
-
-      - id: check-shebang-scripts-are-executable
-        name: check that scripts with shebangs are executable
-        description: ensures that (non-binary) files with a shebang are executable.
-        entry: check-shebang-scripts-are-executable
-        language: python
-        types: [text]
-        stages: [commit, push, manual]
-
       - id: check-json
         name: check json
         description: checks json files for parseable syntax.

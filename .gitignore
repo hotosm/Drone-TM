@@ -78,3 +78,57 @@ chart/charts
 
 #Docker
 DockerData/
+
+
+
+########################################## Terraform ##########################################
+# Terraform State files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+
+# Ignore override files as they are usually used to override resources locally
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# .terraform directory is used by Terraform to store module and provider caches
+.terraform/
+
+# Ignore any plan files
+*.tfplan
+
+# Ignore variables files that may contain sensitive information
+*.tfvars
+*.tfvars.json
+
+# Ignore local environment files
+.terraform.lock.hcl
+
+# Ignore backup files
+*.backup
+
+# Ignore editor specific files
+# Examples for Visual Studio Code, IntelliJ IDEA, etc.
+.vscode/
+.idea/
+
+# Ignore Mac OS specific files
+.DS_Store
+
+# Ignore Linux and Unix specific files
+*.swp
+*.swo
+
+#Ignore Pem File
+*.pem
+
+#Ignore Aws Cred
+*/.aws/credentials
