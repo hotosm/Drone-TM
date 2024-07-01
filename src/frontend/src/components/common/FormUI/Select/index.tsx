@@ -109,9 +109,9 @@ export default function Select({
     <div className="naxatw-relative">
       <div
         ref={dropdownRef}
-        className={`naxatw-group naxatw-relative naxatw-flex naxatw-h-11 naxatw-w-full
-        naxatw-cursor-pointer naxatw-items-center naxatw-justify-between naxatw-border-b-2
-        hover:naxatw-border-blue-400
+        className={`naxatw-group naxatw-relative naxatw-flex naxatw-h-9 naxatw-w-full naxatw-cursor-pointer
+        naxatw-items-center naxatw-justify-between naxatw-rounded-md naxatw-border naxatw-border-gray-800
+        hover:naxatw-border-red
         ${className}`}
         onClick={toggleDropdown}
       >
@@ -121,7 +121,7 @@ export default function Select({
             placeholder={getPlaceholderText()}
             className={`naxatw-w-full naxatw-border-none ${inputTagClassname} ${
               selected ? 'placeholder:naxatw-text-grey-800' : ''
-            } focus:placeholder:naxatw-text-grey-400 `}
+            } focus:placeholder:naxatw-text-grey-400`}
             value={searchText}
             onClick={e => {
               setIsOpen(true);
@@ -143,8 +143,8 @@ export default function Select({
         {showClearIcon ? (
           <Icon
             name="clear"
-            className="naxatw-absolute naxatw-right-0 naxatw-items-center 
-              !naxatw-text-base hover:naxatw-text-primary-400"
+            className="hover:naxatw-text-primary-400 naxatw-absolute naxatw-right-0 
+              naxatw-items-center !naxatw-text-base"
             onClick={() => setSearchText('')}
           />
         ) : (
@@ -153,7 +153,7 @@ export default function Select({
               // eslint-disable-next-line no-nested-ternary
               !isOpen ? 'expand_more' : withSearch ? 'search' : 'expand_less'
             }
-            className="naxatw-absolute naxatw-right-1 naxatw-items-center group-hover:naxatw-text-primary-400"
+            className="group-hover:naxatw-text-primary-400 naxatw-absolute naxatw-right-1 naxatw-items-center"
           />
         )}
       </div>
@@ -167,8 +167,8 @@ export default function Select({
           {options && filterOptions.length > 0 ? (
             filterOptions.map(option => (
               <li
-                className="naxatw-flex naxatw-cursor-pointer naxatw-list-none naxatw-items-start naxatw-px-4 naxatw-py-2.5
-                naxatw-text-sm naxatw-text-grey-800 hover:naxatw-bg-primary-50"
+                className="hover:naxatw-bg-primary-50 naxatw-flex naxatw-cursor-pointer naxatw-list-none naxatw-items-start naxatw-px-4
+                naxatw-py-2.5 naxatw-text-sm naxatw-text-grey-800"
                 key={option[valueKey]}
                 onClick={() => handleOptionClick(option[valueKey])}
               >

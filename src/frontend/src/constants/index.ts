@@ -11,3 +11,21 @@ export const navLinks = [
     linkName: 'Dashboard',
   },
 ];
+
+export const tabOptions = [
+  {
+    id: 1,
+    label: 'Basic Details',
+    value: 1,
+  },
+  {
+    id: 2,
+    label: 'Other Details',
+    value: 2,
+  },
+  {
+    id: 3,
+    label: 'Password',
+    value: 3,
+  },
+];

@@ -12,6 +12,7 @@ export interface CommonState {
   showPromptDialog: boolean;
   promptDialogContent: PromptDialogContentsType;
   showMap: boolean;
+  userProfileActiveTab: number;
 }
 
 const initialState: CommonState = {
@@ -20,6 +21,7 @@ const initialState: CommonState = {
   showPromptDialog: false,
   promptDialogContent: null,
   showMap: false,
+  userProfileActiveTab: 1,
 };
 
 const setCommonState: CaseReducer<
