@@ -93,7 +93,13 @@ async def upload_project_task_boundaries(
 
     Returns:
         dict: JSON containing success message, project ID, and number of tasks.
-    """
+    """    
+    #check the project in Database
+    raw_sql = f"""SELECT id FROM projects WHERE id = '{project_id}' LIMIT 1;"""
+    project =  await db.fetch_one(query=raw_sql)
+    if not project:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Project not found.")
+
     # read entire file
     content = await task_geojson.read()
     task_boundaries = json.loads(content)
@@ -171,11 +177,13 @@ async def read_projects(
 
 
 @router.get(
-    "/{project_id}", tags=["Projects"], response_model=project_schemas.ProjectOut
-)
+    "/{project_id}", tags=["Projects"])
 async def read_project(
-    db: Session = Depends(database.get_db),
-    project: db_models.DbProject = Depends(project_crud.get_project_by_id),
+    project_id: int,
+    db: Session = Depends(database.encode_db),
 ):
-    """Get a specific project by ID."""
+    """Get a specific project and all associated tasks by ID."""
+    project = await project_crud.get_project_by_id(db, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
     return project

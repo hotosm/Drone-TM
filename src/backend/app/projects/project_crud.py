@@ -14,6 +14,7 @@ from app.db import database
 from fastapi import Depends
 from asyncio import gather
 from databases import Database
+from app.models.enums import HTTPStatus
 
 
 async def create_project_with_project_info(
@@ -54,15 +55,58 @@ async def create_project_with_project_info(
 
 
 async def get_project_by_id(
-    db: Session = Depends(database.get_db), project_id: Optional[int] = None
+    db: Database = Depends(database.encode_db), project_id: Optional[int] = None
 ) -> db_models.DbProject:
-    """Get a single project by id."""
-    db_project = (
-        db.query(db_models.DbProject)
-        .filter(db_models.DbProject.id == project_id)
-        .first()
-    )
-    return await convert_to_app_project(db_project)
+    """Get a single project &  all associated tasks by ID."""
+    #check the project in Database
+    raw_sql = f"""SELECT id, short_description,total_tasks FROM projects WHERE id = '{project_id}' LIMIT 1;"""
+    raw_sql = f"""
+    SELECT 
+        projects.id, 
+        projects.short_description, 
+        projects.description,
+        projects.author_id,
+        users.name AS author_name
+    FROM projects 
+    JOIN users ON projects.author_id = users.id 
+    WHERE projects.id = '{project_id}' 
+    LIMIT 1;
+    """
+
+    project =  await db.fetch_one(query=raw_sql)
+    if not project:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Project not found.")
+
+    # get tasks of project
+    query = f""" SELECT * from tasks WHERE project_id = '{project_id}';"""
+    all_tasks = await db.fetch_all(query=query)    
+    tasks =   await convert_to_app_tasks(all_tasks)
+    # Count the total tasks
+    task_count = len(tasks)
+    return {
+        "project": project,
+        "task_count": task_count,
+        "tasks": tasks,
+    }
+    
+async def convert_to_app_tasks(
+    db_tasks: List[db_models.DbTask],
+) -> List[project_schemas.TaskOut]:
+    """Legacy function to convert db models --> Pydantic.
+
+    TODO refactor to use Pydantic model methods instead.
+    """
+    if db_tasks and len(db_tasks) > 0:
+
+        async def convert_task(task):
+            return await convert_to_app_task(task)
+
+        app_tasks = await gather(
+            *[convert_task(task) for task in db_tasks]
+        )        
+        return [task for task in app_tasks if task is not None]
+    else:
+        return []    
 
 
 async def get_projects(
@@ -80,23 +124,6 @@ async def get_projects(
         """
     db_projects = await db.fetch_all(raw_sql, {"skip": skip, "limit": limit})
     return await convert_to_app_projects(db_projects)
-
-
-# async def get_projects(
-#     db: Session,
-#     skip: int = 0,
-#     limit: int = 100,
-# ):
-#     """Get all projects."""
-#     db_projects = (
-#         db.query(db_models.DbProject)
-#         .order_by(db_models.DbProject.id.desc())
-#         .offset(skip)
-#         .limit(limit)
-#         .all()
-#     )
-#     project_count = db.query(db_models.DbProject).count()
-#     return project_count, await convert_to_app_projects(db_projects)
 
 
 async def convert_to_app_projects(
@@ -131,6 +158,19 @@ async def convert_to_app_project(db_project: db_models.DbProject):
             db_project.outline, {"id": db_project.id}, db_project.id
         )
     return app_project
+
+async def convert_to_app_task(db_task: db_models.DbTask):
+    """Legacy function to convert db models --> Pydantic."""
+    if not db_task:
+        return None
+    app_task = db_task
+
+    if app_task.outline:
+        
+        app_task = str_to_geojson(
+            app_task.outline, {"id": app_task.id}, app_task.id
+        )
+    return app_task
 
 
 async def create_tasks_from_geojson(
