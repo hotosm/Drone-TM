@@ -12,7 +12,7 @@ from app.config import settings
 from app.users import user_crud
 from app.db import database
 from app.models.enums import HTTPStatus
-from databases import Database
+from psycopg import Connection
 from fastapi.responses import JSONResponse
 from loguru import logger as log
 
@@ -31,7 +31,7 @@ router = APIRouter(
 @router.post("/login/")
 async def login_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Database = Depends(database.get_db),
+    db: Annotated[Connection, Depends(database.get_db)],
 ) -> Token:
     """
     OAuth2 compatible token login, get an access token for future requests
@@ -60,8 +60,8 @@ async def login_access_token(
 async def update_user_profile(
     user_id: str,
     profile_update: ProfileUpdate,
-    db: Database = Depends(database.get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Update user profile based on provided user_id and profile_update data.
@@ -124,7 +124,7 @@ async def callback(request: Request, google_auth=Depends(init_google_auth)):
 
 
 @router.get("/refresh-token", response_model=Token)
-async def update_token(user_data: AuthUser = Depends(login_required)):
+async def update_token(user_data: Annotated[AuthUser, Depends(login_required)]):
     """Refresh access token"""
 
     access_token, refresh_token = await user_crud.create_access_token(
@@ -135,8 +135,8 @@ async def update_token(user_data: AuthUser = Depends(login_required)):
 
 @router.get("/my-info/")
 async def my_data(
-    db: Database = Depends(database.get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """Read access token and get user details from Google"""
 

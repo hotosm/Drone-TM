@@ -48,7 +48,9 @@ services:
     env_file: .env
     environment:
       LANG: en-GB.utf8
-      # POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-GB"
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-GB"
+    ports:
+      - "5467:5432"
     networks:
       - dtm-network
     restart: unless-stopped
@@ -100,5 +102,5 @@ services:
       - .env
     networks:
       - dtm-network
-    entrypoint: ["pdm", "run", "alembic", "upgrade", "head"]
+    entrypoint: ["alembic", "upgrade", "head"]
     restart: "no"

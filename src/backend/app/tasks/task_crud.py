@@ -1,11 +1,11 @@
 import uuid
-from databases import Database
 from app.models.enums import HTTPStatus, State
 from fastapi import HTTPException
 from loguru import logger as log
+from psycopg import Connection
 
 
-async def get_tasks_by_user(user_id: str, db: Database):
+async def get_tasks_by_user(user_id: str, db: Connection):
     try:
         query = """WITH task_details AS (
         SELECT
@@ -42,7 +42,7 @@ async def get_tasks_by_user(user_id: str, db: Database):
         ) from e
 
 
-async def get_all_tasks(db: Database, project_id: uuid.UUID):
+async def get_all_tasks(db: Connection, project_id: uuid.UUID):
     query = """
         SELECT id FROM tasks WHERE project_id = :project_id
     """
@@ -56,7 +56,7 @@ async def get_all_tasks(db: Database, project_id: uuid.UUID):
     return task_ids
 
 
-async def all_tasks_states(db: Database, project_id: uuid.UUID):
+async def all_tasks_states(db: Connection, project_id: uuid.UUID):
     query = """
         SELECT DISTINCT ON (task_id) project_id, task_id, state
         FROM task_events
@@ -95,7 +95,11 @@ async def all_tasks_states(db: Database, project_id: uuid.UUID):
 
 
 async def request_mapping(
-    db: Database, project_id: uuid.UUID, task_id: uuid.UUID, user_id: str, comment: str
+    db: Connection,
+    project_id: uuid.UUID,
+    task_id: uuid.UUID,
+    user_id: str,
+    comment: str,
 ):
     query = """
             WITH last AS (
@@ -139,8 +143,8 @@ async def request_mapping(
     return {"project_id": project_id, "task_id": task_id, "comment": comment}
 
 
-async def update_or_create_task_state(
-    db: Database,
+async def update_task_state(
+    db: Connection,
     project_id: uuid.UUID,
     task_id: uuid.UUID,
     user_id: str,
@@ -195,7 +199,7 @@ async def update_or_create_task_state(
 
 
 async def get_requested_user_id(
-    db: Database, project_id: uuid.UUID, task_id: uuid.UUID
+    db: Connection, project_id: uuid.UUID, task_id: uuid.UUID
 ):
     query = """
         SELECT user_id
@@ -216,7 +220,7 @@ async def get_requested_user_id(
     return result["user_id"]
 
 
-async def get_project_task_by_id(db: Database, user_id: str):
+async def get_project_task_by_id(db: Connection, user_id: str):
     """Get a list of pending tasks created by a specific user (project creator)."""
     _sql = """
         SELECT id FROM projects WHERE author_id = :user_id

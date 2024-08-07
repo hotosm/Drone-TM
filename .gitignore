@@ -43,7 +43,6 @@ db.sqlite3
 
 # ignore python environments
 venv
-fmtm-env
 
 # project related
 temp_webmaps/local_only

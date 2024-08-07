@@ -1,21 +1,21 @@
 import os
-import json
-import uuid
-from app.users.user_deps import login_required
-from app.users.user_schemas import AuthUser
+from typing import Annotated
 import geojson
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from geojson_pydantic import FeatureCollection
 from loguru import logger as log
-from app.projects import project_schemas, project_crud
-from app.db import database
-from app.models.enums import HTTPStatus
-from app.utils import multipolygon_to_polygon
-from app.s3 import s3_client
-from app.config import settings
-from databases import Database
+from psycopg import Connection
 from shapely.geometry import shape, mapping
 from shapely.ops import unary_union
+
+from app.projects import project_schemas, project_crud, project_deps
+from app.db import database
+from app.models.enums import HTTPStatus
+from app.s3 import s3_client
+from app.config import settings
+from app.users.user_deps import login_required
+from app.users.user_schemas import AuthUser
 
 router = APIRouter(
     prefix=f"{settings.API_PREFIX}/projects",
@@ -25,9 +25,11 @@ router = APIRouter(
 
 @router.delete("/{project_id}", tags=["Projects"])
 async def delete_project_by_id(
-    project_id: uuid.UUID,
-    db: Database = Depends(database.get_db),
-    user: AuthUser = Depends(login_required),
+    project: Annotated[
+        project_schemas.DbProject, Depends(project_deps.get_project_by_id)
+    ],
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Delete a project by its ID, along with all associated tasks.
@@ -42,91 +44,48 @@ async def delete_project_by_id(
     Raises:
         HTTPException: If the project is not found.
     """
-    delete_query = """
-        WITH deleted_project AS (
-            DELETE FROM projects
-            WHERE id = :project_id
-            RETURNING id
-        ), deleted_tasks AS (
-            DELETE FROM tasks
-            WHERE project_id = :project_id
-            RETURNING id
-        ), deleted_task_events AS (
-            DELETE FROM task_events
-            WHERE project_id = :project_id
-            RETURNING event_id
-        )
-        SELECT id FROM deleted_project
-    """
-
-    result = await db.fetch_one(query=delete_query, values={"project_id": project_id})
-
-    if not result:
-        raise HTTPException(status_code=404)
-
-    return {"message": f"Project ID: {project_id} is deleted successfully."}
+    project_id = await project_schemas.DbProject.delete(db, project.id)
+    return {"message": f"Project successfully deleted {project_id}"}
 
 
-@router.post("/create_project", tags=["Projects"])
+@router.post("/", tags=["Projects"])
 async def create_project(
     project_info: project_schemas.ProjectIn,
-    db: Database = Depends(database.get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
-    """Create a project in  database."""
-    author_id = user_data.id
-    project_id = await project_crud.create_project_with_project_info(
-        db, author_id, project_info
-    )
-    if not project_id:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="Project creation failed"
-        )
-    return {"message": "Project successfully created", "project_id": project_id}
+    """Create a project in database."""
+    project_id = await project_schemas.DbProject.create(db, project_info, user_data.id)
+    return {"message": f"Project successfully created ({project_id})"}
 
 
 @router.post("/{project_id}/upload-task-boundaries", tags=["Projects"])
 async def upload_project_task_boundaries(
-    project_id: uuid.UUID,
-    task_geojson: UploadFile = File(...),
-    db: Database = Depends(database.get_db),
-    user: AuthUser = Depends(login_required),
+    project: Annotated[
+        project_schemas.DbProject, Depends(project_deps.get_project_by_id)
+    ],
+    db: Annotated[Connection, Depends(database.get_db)],
+    user: Annotated[AuthUser, Depends(login_required)],
+    task_featcol: Annotated[FeatureCollection, Depends(project_deps.geojson_upload)],
 ):
     """Set project task boundaries using split GeoJSON from frontend.
 
     Each polygon in the uploaded geojson are made into single task.
 
-    Required Parameters:
-        project_id (id): ID for associated project.
-        task_geojson (UploadFile): Multi-polygon GeoJSON file.
-
     Returns:
         dict: JSON containing success message, project ID, and number of tasks.
     """
-    # check the project in Database
-    raw_sql = f"""SELECT id FROM projects WHERE id = '{project_id}' LIMIT 1;"""
-    project = await db.fetch_one(query=raw_sql)
-    if not project:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="Project not found."
-        )
-    # read entire file
-    content = await task_geojson.read()
-    task_boundaries = json.loads(content)
-    task_boundaries = multipolygon_to_polygon(task_boundaries)
-
     log.debug("Creating tasks for each polygon in project")
-    await project_crud.create_tasks_from_geojson(db, project_id, task_boundaries)
-
-    return {"message": "Project Boundary Uploaded", "project_id": f"{project_id}"}
+    await project_crud.create_tasks_from_geojson(db, project.id, task_featcol)
+    return {"message": "Project Boundary Uploaded", "project_id": f"{project.id}"}
 
 
 @router.post("/preview-split-by-square/", tags=["Projects"])
 async def preview_split_by_square(
+    user: Annotated[AuthUser, Depends(login_required)],
     project_geojson: UploadFile = File(...),
     no_fly_zones: UploadFile = File(default=None),
     dimension: int = Form(100),
-    user: AuthUser = Depends(login_required),
 ):
     """Preview splitting by square."""
 
@@ -164,7 +123,8 @@ async def preview_split_by_square(
 
 @router.post("/generate-presigned-url/", tags=["Image Upload"])
 async def generate_presigned_url(
-    data: project_schemas.PresignedUrlRequest, user: AuthUser = Depends(login_required)
+    data: project_schemas.PresignedUrlRequest,
+    user: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Generate a pre-signed URL for uploading an image to S3 Bucket.
@@ -206,26 +166,26 @@ async def generate_presigned_url(
 
 @router.get("/", tags=["Projects"], response_model=list[project_schemas.ProjectOut])
 async def read_projects(
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
     skip: int = 0,
     limit: int = 100,
-    db: Database = Depends(database.get_db),
-    user_data: AuthUser = Depends(login_required),
 ):
-    "Return all projects"
-    projects = await project_crud.get_projects(db, skip, limit)
-    return projects
+    "Get all projects with task count."
+    try:
+        return await project_schemas.DbProject.all(db, skip, limit)
+    except KeyError as e:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND) from e
 
 
 @router.get(
     "/{project_id}", tags=["Projects"], response_model=project_schemas.ProjectOut
 )
 async def read_project(
-    project_id: uuid.UUID,
-    db: Database = Depends(database.get_db),
-    user_data: AuthUser = Depends(login_required),
+    project: Annotated[
+        project_schemas.DbProject, Depends(project_deps.get_project_by_id)
+    ],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """Get a specific project and all associated tasks by ID."""
-    project = await project_crud.get_project_info_by_id(db, project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
     return project

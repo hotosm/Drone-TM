@@ -1,14 +1,15 @@
 from app.drones import drone_schemas
 from app.models.enums import HTTPStatus
-from databases import Database
 from loguru import logger as log
 from fastapi import HTTPException
-from asyncpg import UniqueViolationError
+from psycopg import Connection
+
+# from asyncpg import UniqueViolationError
 from typing import List
 from app.drones.drone_schemas import DroneOut
 
 
-async def read_all_drones(db: Database) -> List[DroneOut]:
+async def read_all_drones(db: Connection) -> List[DroneOut]:
     """
     Retrieves all drone records from the database.
 
@@ -32,7 +33,7 @@ async def read_all_drones(db: Database) -> List[DroneOut]:
         ) from e
 
 
-async def delete_drone(db: Database, drone_id: int) -> bool:
+async def delete_drone(db: Connection, drone_id: int) -> bool:
     """
     Deletes a drone record from the database, along with associated drone flights.
 
@@ -63,7 +64,7 @@ async def delete_drone(db: Database, drone_id: int) -> bool:
         ) from e
 
 
-async def get_drone(db: Database, drone_id: int):
+async def get_drone(db: Connection, drone_id: int):
     """
     Retrieves a drone record from the database.
 
@@ -89,7 +90,7 @@ async def get_drone(db: Database, drone_id: int):
         ) from e
 
 
-async def create_drone(db: Database, drone_info: drone_schemas.DroneIn):
+async def create_drone(db: Connection, drone_info: drone_schemas.DroneIn):
     """
     Creates a new drone record in the database.
 
@@ -116,12 +117,12 @@ async def create_drone(db: Database, drone_info: drone_schemas.DroneIn):
         result = await db.execute(insert_query, drone_info.__dict__)
         return result
 
-    except UniqueViolationError as e:
-        log.exception("Unique constraint violation: %s", e)
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail="A drone with this model already exists",
-        )
+    # except UniqueViolationError as e:
+    #     log.exception("Unique constraint violation: %s", e)
+    #     raise HTTPException(
+    #         status_code=HTTPStatus.CONFLICT,
+    #         detail="A drone with this model already exists",
+    #     )
 
     except Exception as e:
         log.exception(e)

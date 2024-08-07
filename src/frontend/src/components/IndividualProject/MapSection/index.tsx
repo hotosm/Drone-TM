@@ -79,7 +79,7 @@ export default function MapSection() {
       (acc, curr) => {
         return {
           ...acc,
-          features: [...acc.features, curr.outline_geojson],
+          features: [...acc.features, curr.outline],
         };
       },
       {
@@ -136,7 +136,7 @@ export default function MapSection() {
               map={map as Map}
               id={`tasks-layer-${task?.id}-${taskStatusObj?.[task?.id]}`}
               visibleOnMap={task?.id && taskStatusObj}
-              geojson={task.outline_geojson as GeojsonType}
+              geojson={task.outline as GeojsonType}
               interactions={['feature']}
               layerOptions={
                 taskStatusObj?.[`${task?.id}`] === 'LOCKED_FOR_MAPPING'

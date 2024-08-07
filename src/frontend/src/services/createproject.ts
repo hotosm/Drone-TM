@@ -7,7 +7,7 @@ export const getProjectDetail = (id: string) =>
   authenticated(api).get(`/projects/${id}`);
 
 export const postCreateProject = (data: any) =>
-  authenticated(api).post('/projects/create_project', data, {
+  authenticated(api).post('/projects', data, {
     headers: { 'Content-Type': 'application/json' },
   });
 

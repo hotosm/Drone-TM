@@ -51,7 +51,7 @@ export default function Projects() {
                     containerId={`map-libre-map-${singleproject.id}`}
                     title={singleproject.name}
                     description={singleproject.description}
-                    geojson={singleproject.outline_geojson}
+                    geojson={singleproject.outline}
                   />
                 ),
               )

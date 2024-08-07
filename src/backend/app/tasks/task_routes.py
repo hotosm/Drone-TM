@@ -1,4 +1,5 @@
 import uuid
+from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app.config import settings
 from app.models.enums import EventType, State, UserRole
@@ -6,7 +7,7 @@ from app.tasks import task_schemas, task_crud
 from app.users.user_deps import login_required
 from app.users.user_schemas import AuthUser
 from app.users.user_crud import get_user_by_id
-from databases import Database
+from psycopg import Connection
 from app.db import database
 from app.utils import send_notification_email, render_email_template
 from app.projects.project_crud import get_project_by_id
@@ -21,8 +22,8 @@ router = APIRouter(
 
 @router.get("/", response_model=list[task_schemas.UserTasksStatsOut])
 async def list_tasks(
-    db: Database = Depends(database.get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """Get all tasks for a drone user."""
 
@@ -31,7 +32,9 @@ async def list_tasks(
 
 
 @router.get("/states/{project_id}")
-async def task_states(project_id: uuid.UUID, db: Database = Depends(database.get_db)):
+async def task_states(
+    db: Annotated[Connection, Depends(database.get_db)], project_id: uuid.UUID
+):
     """Get all tasks states for a project."""
 
     return await task_crud.all_tasks_states(db, project_id)
@@ -39,12 +42,12 @@ async def task_states(project_id: uuid.UUID, db: Database = Depends(database.get
 
 @router.post("/event/{project_id}/{task_id}")
 async def new_event(
+    db: Annotated[Connection, Depends(database.get_db)],
     background_tasks: BackgroundTasks,
     project_id: uuid.UUID,
     task_id: uuid.UUID,
     detail: task_schemas.NewEvent,
-    user_data: AuthUser = Depends(login_required),
-    db: Database = Depends(database.get_db),
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     user_id = user_data.id
 
@@ -223,8 +226,8 @@ async def new_event(
 
 @router.get("/requested_tasks/pending")
 async def get_pending_tasks(
-    user_data: AuthUser = Depends(login_required),
-    db: Database = Depends(database.get_db),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """Get a list of pending tasks for a project creator."""
     user_id = user_data.id

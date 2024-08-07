@@ -82,7 +82,7 @@ export default function DefineAOI({
         drawProjectAreaEnable: false,
       }),
     );
-    setValue('outline_geojson', drawnProjectArea);
+    setValue('outline', drawnProjectArea);
     if (resetDrawTool) {
       resetDrawTool();
     }
@@ -114,7 +114,7 @@ export default function DefineAOI({
         drawNoFlyZoneEnable: false,
       }),
     );
-    setValue('outline_no_fly_zones', drawnNoFlyZone);
+    setValue('no_fly_zones', drawnNoFlyZone);
     if (resetDrawTool) {
       resetDrawTool();
     }
@@ -133,7 +133,7 @@ export default function DefineAOI({
         if (typeof z === 'object' && !Array.isArray(z) && z !== null) {
           const convertedGeojson = flatten(z);
           dispatch(setCreateProjectState({ projectArea: convertedGeojson }));
-          setValue('outline_geojson', convertedGeojson);
+          setValue('outline', convertedGeojson);
         }
       });
     } catch (err: any) {
@@ -177,7 +177,7 @@ export default function DefineAOI({
         if (typeof z === 'object' && !Array.isArray(z) && z !== null) {
           const convertedGeojson = flatten(z);
           dispatch(setCreateProjectState({ noFlyZone: convertedGeojson }));
-          setValue('outline_no_fly_zones', convertedGeojson);
+          setValue('no_fly_zones', convertedGeojson);
         }
       });
     } catch (err: any) {
@@ -232,7 +232,7 @@ export default function DefineAOI({
                     <FormControl className="naxatw-mt-2">
                       <Controller
                         control={control}
-                        name="outline_geojson"
+                        name="outline"
                         rules={{
                           required: 'Project Area is Required',
                         }}
@@ -240,7 +240,7 @@ export default function DefineAOI({
                           // console.log(value, 'value12');
                           return (
                             <FileUpload
-                              name="outline_geojson"
+                              name="outline"
                               data={value}
                               onChange={handleProjectAreaFileChange}
                               fileAccept=".geojson, .kml"
@@ -252,7 +252,7 @@ export default function DefineAOI({
                         }}
                       />
                       <ErrorMessage
-                        message={errors?.outline_geojson?.message as string}
+                        message={errors?.outline?.message as string}
                       />
                     </FormControl>
                   </>
@@ -352,10 +352,10 @@ export default function DefineAOI({
                             <FormControl className="naxatw-mt-2">
                               <Controller
                                 control={control}
-                                name="outline_no_fly_zones"
+                                name="no_fly_zones"
                                 render={({ field: { value } }) => (
                                   <FileUpload
-                                    name="outline_no_fly_zones"
+                                    name="no_fly_zones"
                                     data={value}
                                     onChange={handleNoFlyZoneFileChange}
                                     isValid={validateAreaOfFileUpload}

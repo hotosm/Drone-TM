@@ -2,6 +2,7 @@ import logging
 import geojson
 import requests
 import shapely
+import json
 from datetime import datetime, timezone
 from typing import Optional, Union, Any
 from geojson_pydantic import Feature, MultiPolygon, Polygon
@@ -16,7 +17,6 @@ from shapely import wkb
 from jinja2 import Template
 from pathlib import Path
 from dataclasses import dataclass
-from slugify import slugify
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from aiosmtplib import send as send_email
@@ -179,7 +179,7 @@ def merge_multipolygon(features: Union[Feature, FeatCol, MultiPolygon, Polygon])
             """Remove z dimension from geojson."""
             return coord.pop() if len(coord) == 3 else None
 
-        features = parse_featcol(features)
+        features = geojson_to_featcol(features)
 
         multi_polygons = []
         # handles both collection or single feature
@@ -206,27 +206,6 @@ def merge_multipolygon(features: Union[Feature, FeatCol, MultiPolygon, Polygon])
             status_code=400,
             detail=f"Couldn't merge the multipolygon to polygon: {str(e)}",
         ) from e
-
-
-def parse_featcol(features: Union[Feature, FeatCol, MultiPolygon, Polygon]):
-    """Parse a feature collection or feature into a GeoJSON FeatureCollection.
-
-    Args:
-        features: Feature, FeatCol, MultiPolygon, Polygon or dict.
-
-    Returns:
-        dict: Parsed GeoJSON FeatureCollection.
-    """
-    if isinstance(features, dict):
-        return features
-
-    feat_col = features.model_dump_json()
-    feat_col = geojson.loads(feat_col)
-    if isinstance(features, (Polygon, MultiPolygon)):
-        feat_col = geojson.FeatureCollection([geojson.Feature(geometry=feat_col)])
-    elif isinstance(features, Feature):
-        feat_col = geojson.FeatureCollection([feat_col])
-    return feat_col
 
 
 def get_address_from_lat_lon(latitude, longitude):
@@ -268,35 +247,98 @@ def get_address_from_lat_lon(latitude, longitude):
     return address_str
 
 
-def multipolygon_to_polygon(features: Union[Feature, FeatCol, MultiPolygon, Polygon]):
+def multipolygon_to_polygon(
+    featcol: geojson.FeatureCollection,
+) -> geojson.FeatureCollection:
     """Converts a GeoJSON FeatureCollection of MultiPolygons to Polygons.
 
     Args:
-        features : A GeoJSON FeatureCollection containing MultiPolygons/Polygons.
+        featcol : A GeoJSON FeatureCollection containing MultiPolygons/Polygons.
 
     Returns:
         geojson.FeatureCollection: A GeoJSON FeatureCollection containing Polygons.
     """
-    geojson_feature = []
-    features = parse_featcol(features)
+    final_features = []
 
-    # handles both collection or single feature
-    features = features.get("features", [features])
-
-    for feature in features:
+    for feature in featcol.get("features", []):
         properties = feature["properties"]
-        geom = shape(feature["geometry"])
+        try:
+            geom = shape(feature["geometry"])
+        except ValueError:
+            log.warning(f"Geometry is not valid, so was skipped: {feature['geometry']}")
+            continue
+
         if geom.geom_type == "Polygon":
-            geojson_feature.append(
-                geojson.Feature(geometry=geom, properties=properties)
-            )
+            final_features.append(geojson.Feature(geometry=geom, properties=properties))
         elif geom.geom_type == "MultiPolygon":
-            geojson_feature.extend(
+            final_features.extend(
                 geojson.Feature(geometry=polygon_coords, properties=properties)
                 for polygon_coords in geom.geoms
             )
 
-    return geojson.FeatureCollection(geojson_feature)
+    return geojson.FeatureCollection(final_features)
+
+
+def normalise_featcol(featcol: geojson.FeatureCollection) -> geojson.FeatureCollection:
+    """Normalise a FeatureCollection into a standadised format.
+
+    The final FeatureCollection will only contain:
+    - Polygon
+    - Polyline
+    - Point
+
+    Processed:
+    - MultiPolygons will be divided out into individual polygons.
+    - GeometryCollections wrappers will be stripped out.
+    - Removes any z-dimension coordinates, e.g. [43, 32, 0.0]
+
+    Args:
+        featcol: A parsed FeatureCollection.
+
+    Returns:
+        geojson.FeatureCollection: A normalised FeatureCollection.
+    """
+    for feat in featcol.get("features", []):
+        geom = feat.get("geometry")
+
+        # Strip out GeometryCollection wrappers
+        if (
+            geom.get("type") == "GeometryCollection"
+            and len(geom.get("geometries", [])) == 1
+        ):
+            feat["geometry"] = geom.get("geometries")[0]
+
+        # Remove any z-dimension coordinates
+        coords = geom.get("coordinates")
+        if isinstance(coords, list) and len(coords) == 3:
+            coords.pop()
+
+    # Convert MultiPolygon type --> individual Polygons
+    return multipolygon_to_polygon(featcol)
+
+
+def geojson_to_featcol(geojson_obj: dict) -> geojson.FeatureCollection:
+    """Enforce GeoJSON is wrapped in FeatureCollection.
+
+    The type check is done directly from the GeoJSON to allow parsing
+    from different upstream libraries (e.g. geojson_pydantic).
+    """
+    # We do a dumps/loads cycle to strip any extra obj logic
+    geojson_type = json.loads(json.dumps(geojson_obj)).get("type")
+
+    if geojson_type == "FeatureCollection":
+        log.debug("Already in FeatureCollection format, reparsing")
+        features = geojson_obj.get("features")
+    elif geojson_type == "Feature":
+        log.debug("Converting Feature to FeatureCollection")
+        features = [geojson_obj]
+    else:
+        log.debug("Converting Geometry to FeatureCollection")
+        features = [geojson.Feature(geometry=geojson_obj)]
+
+    featcol = geojson.FeatureCollection(features=features)
+
+    return normalise_featcol(featcol)
 
 
 @dataclass
@@ -383,32 +425,3 @@ def test_email(email_to: str, subject: str = "Test email") -> None:
     send_notification_email(
         email_to=email_to, subject=subject, html_content=html_content
     )
-
-
-def generate_slug(name: str) -> str:
-    """
-    Generate a unique slug based on the provided name.
-
-    The slug is created by converting the given name into a URL-friendly format and appending
-    the current date and time to ensure uniqueness. The date and time are formatted as
-    "ddmmyyyyHHMM" to create a timestamp.
-
-    Args:
-        name (str): The name from which the slug will be generated.
-
-    Returns:
-        str: The generated slug, which includes the URL-friendly version of the name and
-              a timestamp. If an error occurs during the generation, an empty string is returned.
-
-    Raises:
-        Exception: If an error occurs during the slug generation process.
-    """
-    try:
-        slug = slugify(name)
-        now = datetime.now()
-        date_time_str = now.strftime("%d%m%Y%H%M")
-        slug_with_date = f"{slug}-{date_time_str}"
-        return slug_with_date
-    except Exception as e:
-        print(f"An error occurred while generating the slug: {e}")
-        return ""

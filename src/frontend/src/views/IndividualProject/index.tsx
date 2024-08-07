@@ -47,7 +47,7 @@ export default function IndividualProject() {
         dispatch(
           setProjectState({
             tasksData: res.tasks,
-            projectArea: res.outline_geojson,
+            projectArea: res.outline,
           }),
         ),
     });

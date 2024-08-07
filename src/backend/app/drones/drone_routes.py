@@ -1,11 +1,12 @@
+from typing import Annotated
 from app.users.user_deps import login_required
 from app.users.user_schemas import AuthUser
 from app.models.enums import HTTPStatus
 from fastapi import APIRouter, Depends, HTTPException
-from app.db.database import get_db
+from app.db import database
 from app.config import settings
 from app.drones import drone_schemas
-from databases import Database
+from psycopg import Connection
 from app.drones import drone_crud
 from typing import List
 
@@ -18,8 +19,8 @@ router = APIRouter(
 
 @router.get("/", tags=["Drones"], response_model=List[drone_schemas.DroneOut])
 async def read_drones(
-    db: Database = Depends(get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Retrieves all drone records from the database.
@@ -38,8 +39,8 @@ async def read_drones(
 @router.delete("/{drone_id}", tags=["Drones"])
 async def delete_drone(
     drone_id: int,
-    db: Database = Depends(get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Deletes a drone record from the database.
@@ -61,8 +62,8 @@ async def delete_drone(
 @router.post("/create_drone", tags=["Drones"])
 async def create_drone(
     drone_info: drone_schemas.DroneIn,
-    db: Database = Depends(get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Creates a new drone record in the database.
@@ -86,8 +87,8 @@ async def create_drone(
 @router.get("/{drone_id}", tags=["Drones"], response_model=drone_schemas.DroneOut)
 async def read_drone(
     drone_id: int,
-    db: Database = Depends(get_db),
-    user_data: AuthUser = Depends(login_required),
+    db: Annotated[Connection, Depends(database.get_db)],
+    user_data: Annotated[AuthUser, Depends(login_required)],
 ):
     """
     Retrieves a drone record from the database.

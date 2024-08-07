@@ -78,8 +78,8 @@ export default function CreateprojectLayout() {
     name: '',
     short_description: '',
     description: '',
-    outline_geojson: null,
-    outline_no_fly_zones: null,
+    outline: null,
+    no_fly_zones: null,
     gsd_cm_px: null,
     dimension: null,
     is_terrain_follow: null,
@@ -160,17 +160,17 @@ export default function CreateprojectLayout() {
   const onSubmit = (data: any) => {
     if (activeStep === 2) {
       if (
-        !data?.outline_geojson ||
-        (Array.isArray(data?.outline_geojson) &&
-          data?.outline_geojson?.length === 0)
+        !data?.outline ||
+        (Array.isArray(data?.outline) &&
+          data?.outline?.length === 0)
       ) {
         toast.error('Please upload or draw and save project area');
         return;
       }
       if (
         isNoflyzonePresent === 'yes' &&
-        (!data?.outline_no_fly_zones ||
-          data?.outline_no_fly_zones?.length === 0)
+        (!data?.no_fly_zones ||
+          data?.no_fly_zones?.length === 0)
       ) {
         toast.error('Please upload or draw and save No Fly zone area');
         return;
@@ -187,7 +187,7 @@ export default function CreateprojectLayout() {
       is_terrain_follow: isTerrainFollow === 'hilly',
     };
     // remove key
-    if (isNoflyzonePresent === 'no') delete payload?.outline_no_fly_zones;
+    if (isNoflyzonePresent === 'no') delete payload?.no_fly_zones;
 
     createProject(payload);
   };

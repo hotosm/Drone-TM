@@ -5,9 +5,9 @@ from typing import Any
 from passlib.context import CryptContext
 from app.db import db_models
 from app.users.user_schemas import AuthUser, ProfileUpdate
-from databases import Database
 from fastapi import HTTPException
 from pydantic import EmailStr
+from psycopg import Connection
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -61,26 +61,26 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-async def get_user_by_id(db: Database, id: str):
+async def get_user_by_id(db: Connection, id: str):
     query = "SELECT * FROM users WHERE id = :id LIMIT 1;"
     result = await db.fetch_one(query, {"id": id})
     return result
 
 
-async def get_userprofile_by_userid(db: Database, user_id: str):
+async def get_userprofile_by_userid(db: Connection, user_id: str):
     query = "SELECT * FROM user_profile WHERE user_id = :user_id LIMIT 1;"
     result = await db.fetch_one(query, {"user_id": user_id})
     return result
 
 
-async def get_user_by_email(db: Database, email: str):
+async def get_user_by_email(db: Connection, email: str):
     query = "SELECT * FROM users WHERE email_address = :email LIMIT 1;"
     result = await db.fetch_one(query, {"email": email})
     return result
 
 
 async def authenticate(
-    db: Database, email: EmailStr, password: str
+    db: Connection, email: EmailStr, password: str
 ) -> db_models.DbUser | None:
     db_user = await get_user_by_email(db, email)
     if not db_user:
@@ -91,7 +91,7 @@ async def authenticate(
 
 
 async def get_or_create_user(
-    db: Database,
+    db: Connection,
     user_data: AuthUser,
 ):
     """Get user from User table if exists, else create."""
@@ -132,7 +132,7 @@ async def get_or_create_user(
 
 
 async def update_user_profile(
-    db: Database, user_id: int, profile_update: ProfileUpdate
+    db: Connection, user_id: int, profile_update: ProfileUpdate
 ):
     """
     Update user profile in the database.
