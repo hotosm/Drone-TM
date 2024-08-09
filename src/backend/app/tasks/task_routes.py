@@ -6,7 +6,7 @@ from app.models.enums import EventType, State, UserRole
 from app.tasks import task_schemas, task_crud
 from app.users.user_deps import login_required
 from app.users.user_schemas import AuthUser
-from app.users.user_crud import get_user_by_id
+from app.users.user_deps import get_user_by_id
 from psycopg import Connection
 from app.db import database
 from app.utils import send_notification_email, render_email_template
